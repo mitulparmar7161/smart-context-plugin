@@ -1,0 +1,12 @@
+{
+  "name": "smart-context-agent",
+  "version": "2.0.0",
+  "description": "Graph-based intelligent coding agent",
+  "agents": ["agents/context-agent.md"],
+  "commands": [
+    "commands/init-context.md",
+    "commands/analyze-impact.md",
+    "commands/visualize-graph.md"
+  ],
+  "hooks": "hooks/hooks.json"
+}
