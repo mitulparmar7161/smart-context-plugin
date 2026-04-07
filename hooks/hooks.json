@@ -1,8 +1,13 @@
 {
-  "hooks": [
+  "SessionStart": [
     {
-      "event": "SessionStart",
-      "command": "init-context"
+      "matcher": "",
+      "hooks": [
+        {
+          "type": "command",
+          "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/plugin-init.js\""
+        }
+      ]
     }
   ]
 }

@@ -1,93 +1,71 @@
-# Smart Context Plugin for Claude Code
+# Smart Context Plugin for Claude Code (AI-Driven)
 
-This plugin provides graph-based intelligent coding assistance by analyzing codebase structure and dependencies.
+> **Intelligent, AI-powered project context management.** This plugin doesn't just scan files; it uses Claude to understand what every file does and how they work together.
+
+## How it works
+
+Unlike static scanners, this plugin uses a two-phase approach:
+
+1.  **Fast Scan**: A Node.js script rapidly maps your directory structure into `.context/tree.json`.
+2.  **AI Analysis**: Claude reads each file and generates a concise, high-level summary (`.context/summaries/*.md`) explaining the file's purpose, key variables, and exports.
+3.  **Master Context**: All summaries are combined with the file tree into `.context/project-context.md`, which Claude reads at the start of every session.
+
+### The AI Advantage
+- **Automatic Updates**: When you change a file, Claude automatically updates that file's specific summary.
+- **Deep Understanding**: The context includes *why* a file exists and how its main variables function.
+- **Smart Onboarding**: If a project has no context, Claude will notice and ask if you want to initialize it.
 
 ## Features
 
-- **Graph-based code understanding**: Builds file dependency graphs from import statements
-- **Impact analysis**: Identifies affected files before making changes
-- **Visualization**: Generates HTML representations of the code graph
-- **Automatic initialization**: Builds context graph on session start
-
-## Fixes Applied
-
-The following issues were identified and fixed in the plugin:
-
-### 1. Error Handling
-- Added comprehensive error handling throughout all modules
-- Implemented try-catch blocks for file operations and JSON parsing
-- Added proper error responses for API endpoints
-
-### 2. Security Improvements
-- Enhanced regex patterns to prevent injection attacks
-- Added input validation for all API endpoints
-- Implemented proper file path validation
-
-### 3. Reliability
-- Added directory existence checks before file operations
-- Implemented proper resource management and cleanup
-- Added health check endpoint for monitoring
-
-### 4. Performance
-- Added filtering for common directories (node_modules, .git, etc.)
-- Implemented proper error handling for file reading operations
-- Added support for multiple file extensions (js, jsx, ts, tsx, etc.)
-
-### 5. Code Quality
-- Improved code documentation and comments
-- Enhanced function signatures with proper type handling
-- Added logging for debugging and monitoring
-- Made regex patterns more robust and secure
+- **Tree-based mapping**: Visual representation of your project structure.
+- **Per-file summaries**: AI-generated context for every source file.
+- **Self-healing context**: Automatically updates when files are created, modified, or deleted.
+- **Language-agnostic**: Works with any language Claude understands.
 
 ## Installation
 
-1. Clone or download this repository
-2. Navigate to the plugin directory:
-   ```bash
-   cd smart-context-plugin
-   ```
-3. Install dependencies:
-   ```bash
-   npm install
-   ```
-4. Start the server:
-   ```bash
-   npm start
-   ```
+### 1. Copy to your project
+Copy these three items into your project root:
+- `scripts/` folder
+- `.claude/` folder
+- `CLAUDE.md` file
 
-## Usage
+### 2. Basic Configuration
+Ensure you have Node.js installed. No extra `npm install` is required as it uses built-in modules.
 
-Once installed and running, you can use the following commands in Claude Code:
+## Commands
 
-- `/init-context` - Initialize context graph
-- `/analyze-impact` - Analyze impact of changes
-- `/visualize-graph` - Generate HTML visualization
+| Command | Description |
+| :--- | :--- |
+| `/project:context-init` | Performs a full project scan, reads every file, and generates AI summaries. |
+| `/project:context-refresh` | Quickly rebuilds the master context from existing summaries and tree data. |
 
-## API Endpoints
+## Automation
 
-- `POST /build_graph` - Build file dependency graph
-- `POST /impact` - Analyze impact of changes
-- `POST /visualize` - Generate HTML visualization
-- `GET /health` - Health check endpoint
-- `GET /endpoints` - List all available endpoints
+- **Session Start**: Whenever you start a Claude Code session, the plugin checks for context and loads it.
+- **File Changes**: Claude is instructed (via `CLAUDE.md`) to update the relevant `.context/summaries/*.md` file whenever a change is made.
+
+## Directory Structure
+
+```
+your-project/
+├── .claude/
+│   ├── settings.json          # Hook configuration
+│   └── commands/              # Slash commands
+├── .context/                  # [GENERATED]
+│   ├── tree.json              # Filesystem map
+│   ├── tree.md                # Visual tree
+│   ├── summaries/             # Individual AI summaries
+│   └── project-context.md     # The master context Claude reads
+├── scripts/                   # Plugin logic
+└── CLAUDE.md                  # Brain instructions for Claude
+```
 
 ## Requirements
 
-- Node.js 14+
-- Claude Code 2.0+
-
-## Configuration
-
-The plugin automatically initializes on Claude Code session start. All configuration is handled through the plugin.json manifest file.
-
-## Security
-
-This plugin includes security measures to prevent:
-- Regex injection attacks
-- Directory traversal attacks
-- Input validation for all API endpoints
-- Proper error handling to prevent information leakage
+- Node.js 16+
+- Claude Code
 
 ## License
 
-MIT License
+MIT

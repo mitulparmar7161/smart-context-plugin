@@ -1,0 +1,165 @@
+#!/usr/bin/env node
+
+/**
+ * Build Context — Combines tree + AI summaries into a single project-context.md
+ * 
+ * Reads:
+ *   .context/tree.json      — File list & metadata (from generate-tree.js)
+ *   .context/summaries/*.md — Per-file AI-generated summaries (from Claude)
+ * 
+ * Writes:
+ *   .context/project-context.md — The master context file that Claude reads
+ * 
+ * Usage:
+ *   node scripts/build-context.js [--root <path>] [--quiet]
+ */
+
+import fs from "fs";
+import path from "path";
+
+function parseArgs() {
+  const args = process.argv.slice(2);
+  const opts = { root: ".", quiet: false };
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === "--root" && args[i + 1]) opts.root = args[++i];
+    else if (args[i] === "--quiet") opts.quiet = true;
+  }
+  return opts;
+}
+
+function formatSize(bytes) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function main() {
+  const opts = parseArgs();
+  const rootDir = path.resolve(opts.root);
+  const contextDir = path.join(rootDir, ".claude", "project-context");
+  const treeJsonPath = path.join(contextDir, "tree.json");
+  const summariesDir = path.join(contextDir, "summaries");
+  const outputPath = path.join(contextDir, "project-context.md");
+
+  // ─── Load tree data ────────────────────────────────────────────────
+  if (!fs.existsSync(treeJsonPath)) {
+    console.error("❌ tree.json not found. Run: node scripts/generate-tree.js");
+    process.exit(1);
+  }
+
+  const treeData = JSON.parse(fs.readFileSync(treeJsonPath, "utf-8"));
+  const { projectName, stats, entryPoints, files } = treeData;
+
+  // ─── Load tree.md ──────────────────────────────────────────────────
+  const treeMdPath = path.join(contextDir, "tree.md");
+  const treeMd = fs.existsSync(treeMdPath)
+    ? fs.readFileSync(treeMdPath, "utf-8")
+    : "*(tree not generated)*";
+
+  // ─── Load summaries ────────────────────────────────────────────────
+  const summaries = new Map();
+  if (fs.existsSync(summariesDir)) {
+    for (const file of fs.readdirSync(summariesDir)) {
+      if (file.endsWith(".md")) {
+        try {
+          const content = fs.readFileSync(path.join(summariesDir, file), "utf-8").trim();
+          summaries.set(file, content);
+        } catch {}
+      }
+    }
+  }
+
+  // ─── Build the master context markdown ─────────────────────────────
+  const now = new Date().toISOString();
+  let md = "";
+
+  // Header
+  md += `# Project Context — ${projectName}\n`;
+  md += `> Last updated: ${now}\n`;
+  md += `> Files with AI summaries: ${summaries.size}/${files.filter(f => !f.isBinary).length}\n\n`;
+
+  // Overview
+  md += `## Project Overview\n`;
+  md += `- **Root**: ${treeData.root}\n`;
+
+  const langEntries = Object.entries(stats.languages)
+    .sort((a, b) => b[1] - a[1]).slice(0, 8);
+  if (langEntries.length > 0) {
+    const total = langEntries.reduce((s, [, c]) => s + c, 0);
+    md += `- **Languages**: ${langEntries.map(([l, c]) => `${l} (${Math.round(c / total * 100)}%)`).join(", ")}\n`;
+  }
+  md += `- **Total**: ${stats.totalFiles} files | ${stats.totalLines.toLocaleString()} lines | ${formatSize(stats.totalSize)}\n\n`;
+
+  // Entry Points
+  if (entryPoints.length > 0) {
+    md += `## Entry Points\n`;
+    for (const ep of entryPoints) {
+      md += `- **${ep.type}**: \`${ep.value}\`\n`;
+    }
+    md += `\n`;
+  }
+
+  // Directory Tree
+  md += `## Directory Tree\n\n`;
+  md += treeMd.replace(/^# .+\n\n/, ""); // Remove the H1 from tree.md
+  md += `\n`;
+
+  // File Summaries — grouped by directory
+  md += `## File Summaries\n\n`;
+
+  const filesByDir = {};
+  for (const f of files) {
+    if (f.isBinary) continue;
+    const dir = path.dirname(f.path);
+    if (!filesByDir[dir]) filesByDir[dir] = [];
+    filesByDir[dir].push(f);
+  }
+
+  let summarizedCount = 0;
+  let unsummarizedFiles = [];
+
+  for (const [dir, dirFiles] of Object.entries(filesByDir).sort()) {
+    md += `### 📁 ${dir === "." ? "Root" : dir}\n\n`;
+
+    for (const f of dirFiles) {
+      const summaryContent = summaries.get(f.summaryFile);
+      
+      md += `#### \`${f.name}\`\n`;
+      md += `- **Path**: \`${f.path}\` | **Language**: ${f.language} | **Lines**: ${f.lines}\n`;
+
+      if (summaryContent) {
+        md += `${summaryContent}\n`;
+        summarizedCount++;
+      } else {
+        md += `- ⚠️ *Summary not yet generated — AI needs to read this file*\n`;
+        unsummarizedFiles.push(f.path);
+      }
+      md += `\n`;
+    }
+  }
+
+  // Unsummarized files list (for Claude to know what's pending)
+  if (unsummarizedFiles.length > 0) {
+    md += `## ⏳ Pending Summaries\n\n`;
+    md += `The following files have not been analyzed yet:\n\n`;
+    for (const f of unsummarizedFiles) {
+      md += `- \`${f}\`\n`;
+    }
+    md += `\n> Run \`/project:context-init\` to generate summaries for all files.\n\n`;
+  }
+
+  // Footer
+  md += `---\n`;
+  md += `*Generated by Smart Context Plugin | ${summarizedCount}/${files.filter(f => !f.isBinary).length} files summarized*\n`;
+
+  // ─── Write output ──────────────────────────────────────────────────
+  fs.writeFileSync(outputPath, md, "utf-8");
+
+  if (!opts.quiet) {
+    console.log(`✅ Built: .claude/project-context/project-context.md`);
+    console.log(`   📝 ${summarizedCount} files with AI summaries`);
+    console.log(`   ⏳ ${unsummarizedFiles.length} files pending`);
+  }
+}
+
+main();

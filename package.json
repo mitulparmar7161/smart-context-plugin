@@ -1,12 +1,19 @@
 {
   "name": "smart-context-plugin",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "type": "module",
-  "dependencies": {
-    "express": "^4.18.2",
-    "@babel/parser": "^7.23.0"
-  },
+  "description": "Smart project context management for Claude Code — generates structured tree-based project maps for fast context retrieval",
   "scripts": {
-    "start": "node server/server.js"
-  }
+    "generate": "node scripts/generate-tree.js",
+    "build": "node scripts/build-context.js",
+    "postinstall": "node scripts/generate-tree.js --quiet"
+  },
+  "keywords": [
+    "claude-code",
+    "context",
+    "plugin",
+    "project-map",
+    "code-intelligence"
+  ],
+  "license": "MIT"
 }

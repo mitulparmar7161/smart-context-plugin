@@ -1,7 +1,8 @@
 # Dependencies
 /node_modules
-/.pnp
-.pnp.js
+
+# Generated context (stored inside .claude)
+.claude/project-context/
 
 # Optional eslint cache
 /.eslintcache
@@ -12,6 +13,7 @@
 # IDE
 .idea/
 .vscode/
+.fleet/
 *.swp
 *.swo
 
@@ -28,6 +30,7 @@
 # OS generated files
 .DS_Store
 Thumbs.db
+desktop.ini
 
 # Logs
 *.log
@@ -35,6 +38,3 @@ Thumbs.db
 # Temporary files
 *.tmp
 *.temp
-
-# Plugin specific
-memory/
