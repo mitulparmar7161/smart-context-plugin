@@ -1,13 +1,15 @@
 {
-  "SessionStart": [
-    {
-      "matcher": "",
-      "hooks": [
-        {
-          "type": "command",
-          "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/plugin-init.js\""
-        }
-      ]
-    }
-  ]
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/scripts/plugin-init.js\""
+          }
+        ]
+      }
+    ]
+  }
 }
