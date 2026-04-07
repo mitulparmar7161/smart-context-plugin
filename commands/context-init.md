@@ -1,11 +1,10 @@
 ---
-description: Full project scan — generate tree, read all files, write AI summaries, and build master context
+description: Predictive project indexing — generate tree, and let AI predict file purposes based on name/path (Zero-Token-Cost)
 allowed-tools: Bash, ReadFile, WriteFile
 ---
 
 ## Task
-Initialize or completely rebuild the project context from scratch.
-You will scan the tree, read every unsummarized file, write a summary for it, and then build the master context.
+Perform a "Predictive" index of the project. This is designed to be highly cost-effective by mapping the project map WITHOUT reading the contents of every file.
 
 ## Steps
 
@@ -16,24 +15,24 @@ You will scan the tree, read every unsummarized file, write a summary for it, an
    ```
 
 2. **Read the tree data**
-   Look at the `.claude/project-context/tree.json` file. It contains an array of `files`.
-   Identify all files that need summaries (skip binary files and files > 500 lines if there are too many).
+   Open the `.claude/project-context/tree.json` file. It contains the list of all files in the project.
 
-3. **Generate Summaries (AI Work)**
-   For EACH file that needs a summary (process in batches of 5-10 if there are many):
-   - Read the file content
-   - Create a summary following the exact format from `CLAUDE.md`
-   - Write the summary to `.claude/project-context/summaries/<encoded-path>.md`
-     *(The `<encoded-path>` is the relative path with `/` replaced by `__`, plus `.md`. e.g., `src/app.js` -> `src__app.js.md`)*
+3. **Predictive Summarization (AI Work)**
+   For EACH file in the tree (process in batches of 10-20 to save input tokens):
+   - **DO NOT read the file content.**
+   - Instead, look at the file's **path** and **name** (e.g., `src/auth/login.py`).
+   - Create a brief, 1-2 line prediction of what this file likely does.
+   - Use the format: `[PREDICTIVE] - Purpose: [Your prediction based on name/path]`
+   - Write this prediction to `.claude/project-context/summaries/<encoded-path>.md`.
 
 4. **Build Master Context**
-   Once all summaries are written, compile everything into the master context file:
    ```bash
    node "${CLAUDE_PLUGIN_ROOT}/scripts/build-context.js"
    ```
 
 5. **Report Success**
-   Tell the user the context is fully initialized and summarize what you found.
+   Tell the user the predictive map is complete. Advise them that you will perform a "Full Deep Scan" for specific files when they ask detailed questions about them.
 
-## Performance Note
-If this is a massive project (>20 source files), prioritize the entry points (`index.js`, `main.py`, etc.), core business logic, and configuration files first. You can do the rest incrementally later.
+## Notes
+- This is the fastest and cheapest way to index.
+- If a file name is ambiguous (e.g., `utils.js`), make your best guess based on the folder it's in.

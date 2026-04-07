@@ -1,47 +1,47 @@
 ---
 name: project-context
-description: Manages AI-driven project context via file summaries and directory trees. Use this to maintain and consult deep project memory within .claude/project-context/.
+description: Manages AI-driven project context via [PREDICTIVE] and [FULL] file summaries in .claude/project-context/.
 ---
 
 # Project Context Skill
 
-This skill allows you to maintain a deep, AI-powered understanding of any project by managing file summaries and a visual map.
+This skill allows you to maintain a deep, AI-powered understanding of any project with an "on-demand" token-saving strategy.
 
-## 🧠 Behavior: Using Context
+## 🧠 Behavior: Context Depth
 
-**Before ANY task** — reading, editing, or creating files — check `.claude/project-context/project-context.md` first.
+The context uses two levels of depth to save tokens:
+1. **[PREDICTIVE]**: A summary based ONLY on the file name/path (generated during `/context-init`).
+2. **[FULL]**: A summary based on the actual file content, variables, and logic.
 
+## 📝 Lifecycle: Automatic & Predictive
+
+### 1. Automatic Initialization
 If the context map does NOT exist at session start:
-1. Tell the user: *"I notice this project doesn't have a context map yet. Would you like me to scan the project and build one? This helps me understand your codebase faster."*
-2. If they agree, run `/smart-context-plugin:context-init`.
+- **Immediately run `/smart-context-plugin:context-init`** to build the initial predictive map. 
+- You do NOT need to wait for user permission. Just start guessing based on the file names.
 
-## 📝 Mandatory: Self-Updating Memory
+### 2. When answering questions:
+- If a summary is labeled `[PREDICTIVE]`, you have an "educated guess" of what the file does.
+- If the user's question requires deep technical knowledge of that file:
+    1. READ the file content using `ReadFile`.
+    2. Upgrade the summary to **`[FULL]`** (include variables, exports, and logic).
+    3. Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/build-context.js"`.
 
-**Every time you change the code**, you MUST update the project memory.
+### 3. When editing files:
+- After you successfully edit or create a file, you MUST upgrade its summary to **`[FULL]`**.
+- Include detailed purpose, key exports, and main variables.
+- Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/build-context.js"`.
 
-### After EDITING a file:
-1. Update the summary at `.claude/project-context/summaries/<encoded-path>.md`.
-   - *Encoded path: replace `/` with `__`. e.g., `src/app.js` -> `src__app.js.md`.*
-2. Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/build-context.js"` to rebuild the master file.
+## 📋 [FULL] Summary Format
 
-### After CREATING a new file:
-1. Create a new summary in `.claude/project-context/summaries/`.
-2. Run `node "${CLAUDE_PLUGIN_ROOT}/scripts/generate-tree.js" --quiet` and then `node "${CLAUDE_PLUGIN_ROOT}/scripts/build-context.js"`.
-
-### After DELETING a file:
-1. Delete its summary file.
-2. Run the tree and build scripts (from `${CLAUDE_PLUGIN_ROOT}/scripts/`) to refresh the context.
-
-## 📋 Summary Format
-
-Use this format for per-file summaries:
-- **Purpose**: [What this file does]
-- **Key Exports**: [Functions, classes, variables]
-- **Key Variables/State**: [Important control variables]
-- **Functions**: [Brief list of main functions and their roles]
-- **Connections**: [Relationships to other files]
+Use this format for full summaries:
+- **`[FULL]` - Purpose**: [Detailed description]
+- **Key Exports**: [Functions, classes]
+- **Key Variables/State**: [State, constants, config]
+- **Functions**: [Brief list with roles]
+- **Connections**: [Internal/External dependencies]
 
 ## 🔧 Tools
 
-- `/smart-context-plugin:context-init` — Full scan and initialization.
+- `/smart-context-plugin:context-init` — Ultra-fast predictive scan (names-only).
 - `/smart-context-plugin:context-refresh` — Rapid map refresh.

@@ -6,8 +6,7 @@
  * Checks if project context exists and outputs status for Claude.
  * stdout is injected into Claude's context at session start.
  * 
- * Usage: (called automatically by SessionStart hook)
- *   node scripts/check-context.js
+ * Includes a breakdown of Predictive vs Full summaries to monitor token usage.
  */
 
 import fs from "fs";
@@ -19,32 +18,40 @@ const contextFile = path.join(contextDir, "project-context.md");
 const treeFile = path.join(contextDir, "tree.json");
 
 if (fs.existsSync(contextFile)) {
-  // Context exists — output it for Claude to read
   const content = fs.readFileSync(contextFile, "utf-8");
   const treeData = fs.existsSync(treeFile)
     ? JSON.parse(fs.readFileSync(treeFile, "utf-8"))
     : null;
 
-  const pendingCount = treeData
-    ? treeData.files.filter(f => {
-        if (f.isBinary) return false;
-        return !fs.existsSync(path.join(contextDir, "summaries", f.summaryFile));
-      }).length
-    : 0;
-
-  console.log(`[SMART CONTEXT] Project context loaded (${treeData?.stats?.totalFiles || "?"} files mapped).`);
+  const summariesDir = path.join(contextDir, "summaries");
+  const filesWithSummaries = fs.existsSync(summariesDir) ? fs.readdirSync(summariesDir) : [];
   
-  if (pendingCount > 0) {
-    console.log(`[SMART CONTEXT] ⚠️ ${pendingCount} files still need AI summaries. Run /project:context-init to complete.`);
+  let fullCount = 0;
+  let predictiveCount = 0;
+
+  for (const f of filesWithSummaries) {
+    if (!f.endsWith(".md")) continue;
+    try {
+      const c = fs.readFileSync(path.join(summariesDir, f), "utf-8");
+      if (c.includes("[FULL]")) fullCount++;
+      else if (c.includes("[PREDICTIVE]")) predictiveCount++;
+    } catch {}
+  }
+
+  const totalFiles = treeData?.stats?.totalFiles || 0;
+  const predictiveRemaining = totalFiles - (fullCount + predictiveCount);
+
+  console.log(`[SMART CONTEXT] Project context loaded (${totalFiles} files).`);
+  console.log(`[SMART CONTEXT] Memory depth: ${fullCount} FULL | ${predictiveCount} PREDICTIVE.`);
+  
+  if (predictiveRemaining > 0 && totalFiles > 0) {
+    console.log(`[SMART CONTEXT] ℹ️ ${predictiveRemaining} files have no summary yet. Index required.`);
   }
 
   // Output the full context so Claude has it
   console.log("");
   console.log(content);
 } else {
-  // No context yet
-  console.log("[SMART CONTEXT] ⚠️ No project context found.");
-  console.log("[SMART CONTEXT] This project has not been analyzed yet.");
-  console.log("[SMART CONTEXT] Ask the user: 'I notice this project doesn't have a context map yet. Would you like me to scan the project and build one? This helps me understand your codebase faster.'");
-  console.log("[SMART CONTEXT] If user agrees, run /project:context-init");
+  console.log("[SMART CONTEXT] ⚠️ No project context found. AUTO-INITIALIZATION REQUIRED.");
+  console.log("[SMART CONTEXT] Use your 'project-context' skill to run /project:context-init immediately.");
 }
